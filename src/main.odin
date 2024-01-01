@@ -68,17 +68,22 @@ main :: proc() {
         rl.ClearBackground(rl.BLACK)
 
         rl.BeginMode2D(camera)
-            game.draw()
-            hovered, ok := grid.hovered_cell(cursor)
-            if ok {
-                rl.DrawRectangleV(hovered, grid.CELL, {255, 255, 255, 100})
-            }
-            when ODIN_DEBUG do grid.draw(camera)
+            game.draw(cursor)
         rl.EndMode2D()
 
         when ODIN_DEBUG {
             rl.DrawFPS(rl.GetScreenWidth() - 80, 0)
-            draw_gui(&camera)
+            hovered, ok := grid.hovered_cell(cursor)
+            if ok {
+                rl.BeginMode2D(camera)
+                    grid.draw(camera)
+                    rl.DrawRectangleV(hovered, grid.CELL, {255, 255, 255, 100})
+                    gui_drag(cursor)
+                    gui_delete_wall(cursor)
+                rl.EndMode2D()
+            }
+
+            draw_gui(&camera, cursor)
         }
     }
 }

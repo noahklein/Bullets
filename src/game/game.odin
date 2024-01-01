@@ -29,11 +29,16 @@ init :: proc(size: int) {
 
 deinit :: proc() {
     delete(actors)
+    delete(walls)
 }
 
 update :: proc(dt: f32) {}
 
-draw :: proc() {
+draw :: proc(cursor: rl.Vector2) {
+    for wall in walls {
+        rl.DrawRectangleRec(wall.rect, wall.color)
+    }
+
     for actor in actors {
         color := rl.BLUE if actor.team == .Blue else rl.RED
         rl.DrawRectangleV(actor.pos, ACTOR_SIZE, color)
