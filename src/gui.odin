@@ -21,8 +21,9 @@ draw_gui :: proc(camera: ^rl.Camera2D, cursor: rl.Vector2) {
 }
 
 Gui :: struct {
-    dragging: bool,
+    dragging, show_grid: bool,
     drag_mouse_start: rl.Vector2,
+    color: rl.Color,
 }
 
 gui : Gui
@@ -31,6 +32,7 @@ gui_drag :: proc(cursor: rl.Vector2) {
     if !ngui.want_mouse() && rl.IsMouseButtonPressed(.LEFT) {
         gui.dragging = true
         gui.drag_mouse_start = cursor
+        gui.color = rand_color()
         return
     }
 
@@ -54,17 +56,17 @@ gui_drag :: proc(cursor: rl.Vector2) {
     end := rl.Vector2{f32(end_x), f32(end_y)}
 
     drag_rect := normalize_rect(start, end)
-    rl.DrawRectangleRec(drag_rect, rl.GREEN - {0, 0, 0, 100})
+    rl.DrawRectangleRec(drag_rect, gui.color - {0, 0, 0, 100})
 
     if rl.IsMouseButtonReleased(.LEFT) {
         gui.dragging = false
-        append(&game.walls, game.Wall{ drag_rect, rand_color() })
+        append(&game.walls, game.Wall{ drag_rect, gui.color })
     }
 }
 
 gui_delete_wall :: proc(cursor: rl.Vector2) {
     for wall, i in game.walls do if rl.CheckCollisionPointRec(cursor, wall.rect) {
-        rl.DrawRectangleRec(wall.rect, {255, 255, 255, 80})
+        rl.DrawRectangleRec(wall.rect, {0, 0, 0, 30})
 
         if rl.IsMouseButtonPressed(.RIGHT) {
             unordered_remove(&game.walls, i)

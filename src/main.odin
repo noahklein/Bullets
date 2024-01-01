@@ -58,9 +58,11 @@ main :: proc() {
         defer free_all(context.temp_allocator)
 
         dt := rl.GetFrameTime()
+        cursor := rl.GetScreenToWorld2D(rl.GetMousePosition(), camera)
+
         game.update(dt)
 
-        cursor := rl.GetScreenToWorld2D(rl.GetMousePosition(), camera)
+        if rl.IsKeyPressed(.G) do gui.show_grid = !gui.show_grid
 
         // Draw
         rl.BeginDrawing()
@@ -76,7 +78,7 @@ main :: proc() {
             hovered, ok := grid.hovered_cell(cursor)
             if ok {
                 rl.BeginMode2D(camera)
-                    grid.draw(camera)
+                    if gui.show_grid do grid.draw(camera)
                     rl.DrawRectangleV(hovered, grid.CELL, {255, 255, 255, 100})
                     gui_drag(cursor)
                     gui_delete_wall(cursor)
