@@ -43,33 +43,47 @@ update :: proc(camera: ^rl.Camera2D) {
     }
 }
 
-draw :: proc(camera: rl.Camera2D) {
+draw :: proc(camera: ^rl.Camera2D) {
     POINT_RADIUS := 3 / camera.zoom
 
     rl.BeginDrawing()
     defer rl.EndDrawing()
-    rl.ClearBackground(rl.DARKGRAY)
+    rl.ClearBackground(rl.BLACK)
 
-    rl.BeginMode2D(camera)
-        grid.draw(camera)
-        rl.DrawCircleV(hovered, POINT_RADIUS, rl.BLACK)
+    rl.BeginMode2D(camera^)
+        grid.draw(camera^)
+        rl.DrawCircleV(hovered, POINT_RADIUS, rl.LIGHTGRAY)
 
         rlutil.DrawPolygonLines(polygon[:], rl.YELLOW)
-        for point in polygon do rl.DrawCircleV(point, POINT_RADIUS, rl.GREEN)
+        for point, i in polygon {
+            color: rl.Color
+            switch i {
+                case 0: color = rl.BLUE
+                case len(polygon) - 1: color = rl.SKYBLUE
+                case: color = rl.GREEN
+            }
+            rl.DrawCircleV(point, POINT_RADIUS, color)
+        }
 
         center := rlutil.polygon_center(polygon[:])
         rl.DrawCircleV(center, POINT_RADIUS, rl.RED)
     rl.EndMode2D()
 
-    gui_draw()
+    gui_draw(camera)
 }
 
-gui_draw :: proc() {
+gui_draw :: proc(camera: ^rl.Camera2D) {
     ngui.update()
 
     if ngui.begin_panel("Draw Polygon", {0, 0, 300, 0}) {
-        center := rlutil.polygon_center(polygon[:])
+        if ngui.flex_row({0.2, 0.4, 0.2, 0.2}) {
+            ngui.text("Camera")
+            ngui.vec2(&camera.target, label = "Target")
+            ngui.float(&camera.zoom, min = 0.5, max = 10, label = "Zoom")
+            ngui.float(&camera.rotation, min = -360, max = 360, label = "Angle")
+        }
 
+        center := rlutil.polygon_center(polygon[:])
         if ngui.flex_row({0.25, 0.5}) {
             ngui.text("Points: %v", len(polygon))
             ngui.text("Center: %v", center)

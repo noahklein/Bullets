@@ -72,7 +72,7 @@ main :: proc() {
 
         dt := rl.GetFrameTime()
 
-        camera.zoom += rl.GetMouseWheelMove()
+        camera.zoom += rl.GetMouseWheelMove() / 2
         camera.zoom = clamp(camera.zoom, 0.5, 20)
 
         switch {
@@ -84,7 +84,7 @@ main :: proc() {
             case .Game: mode_game(dt)
             case .DrawPolygon:
                 polydraw.update(&camera)
-                polydraw.draw(camera)
+                polydraw.draw(&camera)
         }
     }
 }

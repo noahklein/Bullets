@@ -3,7 +3,7 @@ package grid
 import rl "vendor:raylib"
 
 CELL :: 16 // Size of a grid cell.
-COLOR :: rl.Color{255, 255, 255, 120}
+COLOR :: rl.Color{255, 255, 255, 100}
 
 draw :: proc(camera: rl.Camera2D) {
     start := snap_down(camera.target - camera.offset / camera.zoom)
