@@ -10,8 +10,7 @@ import "../rlutil"
 polygon: [dynamic]rl.Vector2
 hovered: rl.Vector2
 
-mouse_drag_start: rl.Vector2
-cam_target_drag_start: rl.Vector2
+dragging: bool
 
 init   :: proc(size: int) { reserve(&polygon, size) }
 deinit :: proc() { delete(polygon) }
@@ -28,7 +27,9 @@ update :: proc(camera: ^rl.Camera2D) {
         pop(&polygon)
     }
 
-    if !ngui.want_mouse() && rl.IsMouseButtonDown(.RIGHT) {
+    if !ngui.want_mouse() && rl.IsMouseButtonPressed(.RIGHT) do dragging = true
+    if rl.IsMouseButtonReleased(.RIGHT) do dragging = false
+    if dragging {
         mouse_delta := rl.GetMouseDelta()
         camera.target += -rl.GetMouseDelta() / camera.zoom
     }
@@ -86,17 +87,23 @@ gui_draw :: proc(camera: ^rl.Camera2D) {
         center := rlutil.polygon_center(polygon[:])
         if ngui.flex_row({0.25, 0.5}) {
             ngui.text("Points: %v", len(polygon))
-            ngui.text("Center: %v", center)
+            ngui.text("Center: %.1f", center)
         }
 
-        if ngui.flex_row({0.25, 0.25, 0.25, 0.25}) {
+        if ngui.flex_row({0.2, 0.2, 0.2, 0.2, 0.2}) {
             if ngui.button("Centralize") {
-                for va, i in polygon do polygon[i] = va - center
+                for _, i in polygon do polygon[i] -= center
             }
 
-            if ngui.button("Normalize") {
-                for va, i in polygon do polygon[i] /= grid.CELL
+            if ngui.button("Shrink") || rl.IsKeyPressed(.Q) {
+                for _, i in polygon do polygon[i] /= 2
             }
+
+            if ngui.button("Grow") || rl.IsKeyPressed(.E) {
+                for _, i in polygon do polygon[i] *= 2
+            }
+
+            if ngui.button("Clear") || rl.IsKeyPressed(.BACKSPACE) do clear(&polygon)
 
             // Pretty print polygon to console for copying into code.
             if ngui.button("Print") {
@@ -108,7 +115,6 @@ gui_draw :: proc(camera: ^rl.Camera2D) {
                 fmt.println("}")
             }
 
-            if ngui.button("Clear") || rl.IsKeyPressed(.C) do clear(&polygon)
         }
     }
 }

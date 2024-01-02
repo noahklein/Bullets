@@ -1,7 +1,9 @@
 package main
 
 import "core:fmt"
+import "core:math/linalg"
 import "core:mem"
+
 import rl "vendor:raylib"
 
 import "game"
@@ -42,7 +44,7 @@ main :: proc() {
     defer free_all(context.temp_allocator)
 
     rl.SetTraceLogLevel(.ALL if ODIN_DEBUG else .WARNING)
-    rl.InitWindow(1600, 900, "Terminalia")
+    rl.InitWindow(1600, 900, "Bullets")
     defer rl.CloseWindow()
 
     rl.rlEnableSmoothLines()
@@ -72,8 +74,20 @@ main :: proc() {
 
         dt := rl.GetFrameTime()
 
-        camera.zoom += rl.GetMouseWheelMove() / 2
-        camera.zoom = clamp(camera.zoom, 0.5, 20)
+        cursor := rl.GetScreenToWorld2D(rl.GetMousePosition(), camera)
+
+        if mouse_wheel := rl.GetMouseWheelMove(); mouse_wheel != 0 {
+            STEP :: 1.1
+            zoom_delta: f32 = STEP if mouse_wheel > 0 else 1.0 / STEP
+
+            camera.zoom *= zoom_delta
+            camera.zoom = clamp(camera.zoom, 0.5, 20)
+
+
+            if mouse_wheel > 0 && camera.zoom != 0.5 && camera.zoom != 20 {
+                camera.target = linalg.lerp(camera.target, cursor, 0.1) // Zoom towards cursor
+            }
+        }
 
         switch {
         case rl.IsKeyPressed(.F1): mode = .Game
