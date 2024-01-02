@@ -50,6 +50,9 @@ main :: proc() {
     ngui.init()
     defer ngui.deinit()
 
+    rlutil.profile_init(2)
+    defer rlutil.profile_deinit()
+
     game.init(2)
     defer game.deinit()
 
@@ -60,11 +63,14 @@ main :: proc() {
         dt := rl.GetFrameTime()
         cursor := rl.GetScreenToWorld2D(rl.GetMousePosition(), camera)
 
-        game.update(dt, cursor)
+        if rlutil.profile_begin("update") {
+            game.update(dt, cursor)
+        }
 
         if rl.IsKeyPressed(.G) do gui.show_grid = !gui.show_grid
 
         // Draw
+        rlutil.profile_begin("draw")
         rl.BeginDrawing()
         defer rl.EndDrawing()
         rl.ClearBackground(rl.BLACK)

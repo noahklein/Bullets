@@ -21,7 +21,7 @@ graph_line_push :: proc(line: ^GraphLine, v: f32) {
 }
 
 @(deferred_none=graph_end)
-graph_begin :: proc(label: cstring, size: int, upper, lower: f32) -> bool {
+graph_begin :: proc(label: cstring, size: int, lower, upper: f32) -> bool {
     if label not_in state.graphs {
         state.graphs[label] = Graph{ upper = upper, lower = lower, size = size }
     }

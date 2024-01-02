@@ -1,11 +1,13 @@
 package main
 
+import "core:time"
 import "core:math/rand"
 import rl "vendor:raylib"
 
 import "game"
 import "game/grid"
 import "ngui"
+import "rlutil"
 
 draw_gui :: proc(camera: ^rl.Camera2D, cursor: rl.Vector2) {
     ngui.update()
@@ -17,8 +19,25 @@ draw_gui :: proc(camera: ^rl.Camera2D, cursor: rl.Vector2) {
             ngui.float(&camera.zoom, min = 0.1, max = 10, label = "Zoom")
             ngui.float(&camera.rotation, min = -360, max = 360, label = "Angle")
         }
+
+
+        dur :: proc(prof: rlutil.Profile) -> f32 {
+            return f32(time.stopwatch_duration(prof.stopwatch))
+        }
+
+        if ngui.flex_row({1}) {
+            if ngui.graph_begin("Time", 256, lower = 0, upper = f32(time.Second) / 120) {
+                update := rlutil.profile_get("update")
+                draw   := rlutil.profile_get("draw")
+                ngui.graph_line("Update", dur(update), rl.BLUE)
+                ngui.graph_line("Draw", dur(draw), rl.RED)
+
+            }
+        }
     }
 }
+
+
 
 Gui :: struct {
     dragging, show_grid: bool,
