@@ -9,6 +9,7 @@ import "game/grid"
 
 import "ngui"
 import "rlutil"
+import "polydraw"
 
 // mode : MainMode = .Game
 mode : MainMode = .DrawPolygon
@@ -59,8 +60,8 @@ main :: proc() {
     rlutil.profile_init(2)
     defer rlutil.profile_deinit()
 
-    reserve(&polygon, 8)
-    defer delete(polygon)
+    polydraw.init(8)
+    defer polydraw.deinit()
 
     game.init(2)
     defer game.deinit()
@@ -72,7 +73,7 @@ main :: proc() {
         dt := rl.GetFrameTime()
 
         camera.zoom += rl.GetMouseWheelMove()
-        camera.zoom = clamp(camera.zoom, 0.5, 10)
+        camera.zoom = clamp(camera.zoom, 0.5, 20)
 
         switch {
         case rl.IsKeyPressed(.F1): mode = .Game
@@ -81,7 +82,9 @@ main :: proc() {
 
         switch mode {
             case .Game: mode_game(dt)
-            case .DrawPolygon: mode_draw_polygon(dt)
+            case .DrawPolygon:
+                polydraw.update(&camera)
+                polydraw.draw(camera)
         }
     }
 }
@@ -120,40 +123,3 @@ mode_game :: proc(dt: f32) {
         draw_gui(&camera, cursor)
     }
 }
-
-polygon : [dynamic]rl.Vector2
-
-mode_draw_polygon :: proc(dt: f32) {
-    cursor := rl.GetScreenToWorld2D(rl.GetMousePosition(), camera)
-    hovered, _ := grid.hovered_cell(cursor)
-
-    if rl.IsKeyDown(.LEFT_SHIFT) {
-        hovered = cursor
-    }
-
-    if !ngui.want_mouse() && rl.IsMouseButtonPressed(.LEFT) {
-        already_exists: bool
-        for point in polygon do if rlutil.nearly_eq(point, hovered) {
-            already_exists = true
-            break
-        }
-        if !already_exists do append(&polygon, hovered)
-    }
-
-    rlutil.profile_begin("draw")
-    rl.BeginDrawing()
-    defer rl.EndDrawing()
-    rl.ClearBackground(rl.DARKGRAY)
-
-    rl.BeginMode2D(camera)
-        grid.draw(camera)
-        rl.DrawPixelV(hovered, rl.BLACK)
-
-        rlutil.DrawPolygonLines(polygon[:], rl.YELLOW)
-
-        for point in polygon do rl.DrawPixelV(point, rl.GREEN)
-    rl.EndMode2D()
-
-    gui_draw_polygon()
-}
-

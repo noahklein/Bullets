@@ -1,7 +1,7 @@
 package rlutil
 
 import "core:intrinsics"
-
+import rl "vendor:raylib"
 
 nearly_eq :: proc{
     nearly_eq_scalar,
@@ -17,4 +17,10 @@ nearly_eq_vector :: proc(a, b: $A/[$N]f32, precision: f32 = 0.0001) -> bool #no_
         if !nearly_eq_scalar(a[i], b[i], precision) do return false
     }
     return true
+}
+
+// A polygon's center is the arithmetic mean of the vertices.
+polygon_center :: #force_inline proc(verts: []rl.Vector2) -> (mean: rl.Vector2) {
+    for v in verts do mean += v
+    return mean / f32(len(verts))
 }
