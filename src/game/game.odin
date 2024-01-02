@@ -9,9 +9,20 @@ import "../ngui"
 
 ACTOR_SIZE :: rl.Vector2{2*grid.CELL, 4*grid.CELL}
 
+mode: GameMode = .AimBall
+GameMode :: enum {
+    AimBall,
+    LaunchBall,
+}
+
 active_actor: int
 actors: [dynamic]Actor
 walls : [dynamic]Wall
+ball  : Ball
+
+Ball :: struct{
+    pos: rl.Vector2,
+}
 
 bullet_path : [dynamic]rl.Vector2
 
@@ -47,14 +58,30 @@ deinit :: proc() {
 }
 
 update :: proc(dt: f32, cursor: rl.Vector2) {
+    switch mode {
+        case .AimBall:
+            update_aim_ball(cursor)
+            // Fire!
+            if rl.IsMouseButtonPressed(.MIDDLE) {
+                mode = .LaunchBall
+            }
+        case .LaunchBall: update_launch_ball(dt)
+    }
+}
+
+update_aim_ball :: proc(cursor: rl.Vector2) {
     actor := actors[active_actor]
     my_team := actor.team
 
     point := actor.pos
     dir := cursor - actor.pos
 
+    // Update ball position to aim towards cursor.
+    ball.pos = actor.pos + linalg.normalize(dir) * grid.CELL
+
     clear(&bullet_path)
     append(&bullet_path, point)
+
     for _ in 0..<50 {
         is_my_teammate : bool // For passing
 
@@ -96,6 +123,32 @@ update :: proc(dt: f32, cursor: rl.Vector2) {
     }
 }
 
+ball_path_index: int
+ball_path_timer: f32
+update_launch_ball :: proc(dt: f32) {
+    if ball_path_index >= len(bullet_path) {
+        ball.pos = bullet_path[len(bullet_path) - 1]
+        mode = .AimBall
+
+        ball_path_index = 0
+        ball_path_timer = 0
+        return
+    }
+
+    if ball_path_index == 0 do ball_path_index = 1
+
+    start := bullet_path[ball_path_index - 1]
+    end := bullet_path[ball_path_index]
+
+    ball_path_timer += dt
+    ball.pos = linalg.lerp(start, end, ball_path_timer)
+
+    if  ball_path_timer >= 1 {
+        ball_path_timer -= 1
+        ball_path_index += 1
+    }
+}
+
 draw :: proc(cursor: rl.Vector2) {
     for wall in walls {
         rl.DrawRectangleRec(wall.rect, wall.color)
@@ -105,6 +158,7 @@ draw :: proc(cursor: rl.Vector2) {
         color := rl.BLUE if actor.team == .Blue else rl.RED
         rl.DrawRectangleV(actor.pos, ACTOR_SIZE, color)
     }
+
 
     actor := actors[active_actor]
 
@@ -119,6 +173,9 @@ draw :: proc(cursor: rl.Vector2) {
             rl.DrawLineV(va, vb, color)
         }
     }
+
+    // Draw the ball over the path so that it  looks like the path is coming out of ball.
+    rl.DrawCircleV(ball.pos, grid.CELL, rl.GREEN)
 }
 
 Contact :: struct {
