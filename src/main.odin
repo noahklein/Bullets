@@ -60,7 +60,7 @@ main :: proc() {
         dt := rl.GetFrameTime()
         cursor := rl.GetScreenToWorld2D(rl.GetMousePosition(), camera)
 
-        game.update(dt)
+        game.update(dt, cursor)
 
         if rl.IsKeyPressed(.G) do gui.show_grid = !gui.show_grid
 
