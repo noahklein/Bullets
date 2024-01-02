@@ -16,10 +16,9 @@ draw_gui :: proc(camera: ^rl.Camera2D, cursor: rl.Vector2) {
         if ngui.flex_row({0.2, 0.4, 0.2, 0.2}) {
             ngui.text("Camera")
             ngui.vec2(&camera.target, label = "Target")
-            ngui.float(&camera.zoom, min = 0.1, max = 10, label = "Zoom")
+            ngui.float(&camera.zoom, min = 0.4, max = 10, label = "Zoom")
             ngui.float(&camera.rotation, min = -360, max = 360, label = "Angle")
         }
-
 
         dur :: proc(prof: rlutil.Profile) -> f32 {
             return f32(time.stopwatch_duration(prof.stopwatch))
@@ -36,8 +35,6 @@ draw_gui :: proc(camera: ^rl.Camera2D, cursor: rl.Vector2) {
         }
     }
 }
-
-
 
 Gui :: struct {
     dragging, show_grid: bool,
