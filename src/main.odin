@@ -13,8 +13,8 @@ import "ngui"
 import "rlutil"
 import "polydraw"
 
-// mode : MainMode = .Game
-mode : MainMode = .DrawPolygon
+mode : MainMode = .Game
+// mode : MainMode = .DrawPolygon
 MainMode :: enum { Game, DrawPolygon }
 
 camera: rl.Camera2D
@@ -76,13 +76,13 @@ main :: proc() {
 
         cursor := rl.GetScreenToWorld2D(rl.GetMousePosition(), camera)
 
+        // Camera zoom
         if mouse_wheel := rl.GetMouseWheelMove(); mouse_wheel != 0 {
             STEP :: 1.1
             zoom_delta: f32 = STEP if mouse_wheel > 0 else 1.0 / STEP
 
             camera.zoom *= zoom_delta
             camera.zoom = clamp(camera.zoom, 0.5, 20)
-
 
             if mouse_wheel > 0 && camera.zoom != 0.5 && camera.zoom != 20 {
                 camera.target = linalg.lerp(camera.target, cursor, 0.1) // Zoom towards cursor
