@@ -3,7 +3,7 @@ package grid
 import rl "vendor:raylib"
 
 CELL :: 16 // Size of a grid cell.
-COLOR :: rl.Color{255, 255, 255, 150}
+COLOR :: rl.Color{255, 255, 255, 120}
 
 draw :: proc(camera: rl.Camera2D) {
     start := snap_down(camera.target - camera.offset / camera.zoom)
@@ -13,11 +13,15 @@ draw :: proc(camera: rl.Camera2D) {
     if int(start.y) % (2 * CELL) != 0 do start.y -= CELL
 
     for x := start.x; x <= end.x; x += 2 * CELL {
-        rl.DrawLineV({x, start.y}, {x, end.y}, COLOR)
+        color := COLOR
+        if x == 0 do color.a += 100
+        rl.DrawLineV({x, start.y}, {x, end.y}, color)
     }
 
     for y := start.y; y <= end.y; y += 2 * CELL {
-        rl.DrawLineV({start.x, y}, {end.x, y}, COLOR)
+        color := COLOR
+        if y == 0 do color.a += 100
+        rl.DrawLineV({start.x, y}, {end.x, y}, color)
     }
 }
 
