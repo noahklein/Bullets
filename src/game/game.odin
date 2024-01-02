@@ -20,6 +20,10 @@ Actor :: struct{
     team: Team,
 }
 
+get_actor_rect :: #force_inline proc(a: Actor) -> rl.Rectangle {
+    return {a.pos.x, a.pos.y, ACTOR_SIZE.x, ACTOR_SIZE.y}
+}
+
 Wall :: struct{
     rect: rl.Rectangle,
     color: rl.Color,
@@ -29,7 +33,11 @@ Team :: enum u8 { None, Blue, Red }
 
 init :: proc(size: int) {
     reserve(&actors, size)
-    append(&actors, Actor{{0, 0}, .Blue}, Actor{{8*grid.CELL, 0}, .Red})
+    append(&actors,
+        Actor{{0, 0}, .Blue},
+        Actor{{8*grid.CELL, 0}, .Red},
+        Actor{{16*grid.CELL, 0}, .Blue},
+    )
 }
 
 deinit :: proc() {
@@ -40,6 +48,7 @@ deinit :: proc() {
 
 update :: proc(dt: f32, cursor: rl.Vector2) {
     actor := actors[active_actor]
+    my_team := actor.team
 
     point := actor.pos
     dir := cursor - actor.pos
@@ -47,12 +56,23 @@ update :: proc(dt: f32, cursor: rl.Vector2) {
     clear(&bullet_path)
     append(&bullet_path, point)
     for _ in 0..<50 {
+        is_my_teammate : bool // For passing
+
         // Get contact with lowest collision time.
         min_contact := Contact{ time = 1e19 }
+
         for wall in walls {
             contact := ray_vs_rect(point, dir, wall.rect) or_continue
             if contact.time >= min_contact.time do continue
             min_contact = contact
+        }
+
+        for actor, i in actors do if i != active_actor {
+            contact := ray_vs_rect(point, dir, get_actor_rect(actor)) or_continue
+            if contact.time >= min_contact.time do continue
+
+            min_contact = contact
+            is_my_teammate = actor.team == my_team
         }
 
         // No collision found, just continue the line in that direction.
@@ -69,6 +89,10 @@ update :: proc(dt: f32, cursor: rl.Vector2) {
             dir.y *= -1
         }
         append(&bullet_path, point)
+
+        if is_my_teammate {
+            break // Pass the ball to teammate.
+        }
     }
 }
 
