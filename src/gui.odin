@@ -1,5 +1,6 @@
 package main
 
+import "core:fmt"
 import "core:time"
 import "core:math/rand"
 import rl "vendor:raylib"
@@ -34,6 +35,42 @@ draw_gui :: proc(camera: ^rl.Camera2D, cursor: rl.Vector2) {
             }
         }
     }
+}
+
+gui_draw_polygon :: proc() {
+    ngui.update()
+
+    if ngui.begin_panel("Draw Polygon", {0, 0, 300, 0}) {
+        if ngui.flex_row({0.25, 0.25, 0.25, 0.25}) {
+            ngui.text("Points: %v", len(polygon))
+
+            if ngui.button("Normalize") {
+                center := polygon_center(polygon[:])
+                for va, i in polygon {
+                    polygon[i] = (va - center) / grid.CELL
+                }
+            }
+
+            // Pretty print polygon to console for copying into code.
+            if ngui.button("Print") {
+                fmt.println(" === Vertices === ")
+                fmt.println("{")
+                for v in polygon {
+                    fmt.printf("    {{ % 6.1f, % 6.1f }},\n", v.x, v.y)
+                }
+                fmt.println("}")
+            }
+
+            if ngui.button("Clear") || rl.IsKeyPressed(.C) do clear(&polygon)
+        }
+    }
+
+}
+
+// A polygon's center is the arithmetic mean of the vertices.
+polygon_center :: #force_inline proc(verts: []rl.Vector2) -> (mean: rl.Vector2) {
+    for v in verts do mean += v
+    return mean / f32(len(verts))
 }
 
 Gui :: struct {

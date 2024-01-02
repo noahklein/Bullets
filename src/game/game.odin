@@ -200,7 +200,7 @@ ray_vs_rect :: proc(origin, dir: rl.Vector2, rect: rl.Rectangle) -> (Contact, bo
 
     t_near := max(near.x, near.y)
     t_far  := min(far.x, far.y)
-    if t_far < 0 || t_near <= -linalg.F32_EPSILON {
+    if t_far <= -linalg.F32_EPSILON || t_near <= -linalg.F32_EPSILON {
         return {}, false // Ray pointing away from rect.
     }
 
