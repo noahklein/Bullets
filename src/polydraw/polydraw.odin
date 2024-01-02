@@ -7,8 +7,6 @@ import "../game/grid"
 import "../ngui"
 import "../rlutil"
 
-POINT_RADIUS :: 0.5
-
 polygon: [dynamic]rl.Vector2
 hovered: rl.Vector2
 
@@ -46,6 +44,8 @@ update :: proc(camera: ^rl.Camera2D) {
 }
 
 draw :: proc(camera: rl.Camera2D) {
+    POINT_RADIUS := 3 / camera.zoom
+
     rl.BeginDrawing()
     defer rl.EndDrawing()
     rl.ClearBackground(rl.DARKGRAY)
@@ -75,11 +75,13 @@ gui_draw :: proc() {
             ngui.text("Center: %v", center)
         }
 
-        if ngui.flex_row({0.33, 0.33, 0.33}) {
+        if ngui.flex_row({0.25, 0.25, 0.25, 0.25}) {
+            if ngui.button("Centralize") {
+                for va, i in polygon do polygon[i] = va - center
+            }
+
             if ngui.button("Normalize") {
-                for va, i in polygon {
-                    polygon[i] = (va - center) / grid.CELL
-                }
+                for va, i in polygon do polygon[i] /= grid.CELL
             }
 
             // Pretty print polygon to console for copying into code.
