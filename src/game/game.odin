@@ -5,7 +5,9 @@ import "core:math/linalg"
 import rl "vendor:raylib"
 
 import "grid"
+import "physics"
 import "../ngui"
+import "../rlutil"
 
 ACTOR_SIZE :: rl.Vector2{2*grid.CELL, 4*grid.CELL}
 
@@ -15,14 +17,11 @@ GameMode :: enum {
     LaunchBall,
 }
 
+world : physics.World
+
 active_actor: int
 actors: [dynamic]Actor
-walls : [dynamic]Wall
-ball  : Ball
 
-Ball :: struct{
-    pos: rl.Vector2,
-}
 
 bullet_path : [dynamic]rl.Vector2
 
@@ -49,11 +48,14 @@ init :: proc(size: int) {
         Actor{{8*grid.CELL, 0}, .Red},
         Actor{{16*grid.CELL, 0}, .Blue},
     )
+
+    world = physics.init()
+    world.ball = physics.Body{shape = physics.Circle{grid.CELL}}
 }
 
 deinit :: proc() {
     delete(actors)
-    delete(walls)
+    physics.deinit(world)
     delete(bullet_path)
 }
 
@@ -64,6 +66,7 @@ update :: proc(dt: f32, cursor: rl.Vector2) {
             // Fire!
             if rl.IsMouseButtonPressed(.MIDDLE) {
                 mode = .LaunchBall
+                world.ball.vel = linalg.normalize(cursor - world.ball.pos)
             }
         case .LaunchBall: update_launch_ball(dt)
     }
@@ -77,7 +80,7 @@ update_aim_ball :: proc(cursor: rl.Vector2) {
     dir := cursor - actor.pos
 
     // Update ball position to aim towards cursor.
-    ball.pos = actor.pos + linalg.normalize(dir) * grid.CELL
+    world.ball.pos = actor.pos + linalg.normalize(dir) * grid.CELL
 
     clear(&bullet_path)
     append(&bullet_path, point)
@@ -88,11 +91,6 @@ update_aim_ball :: proc(cursor: rl.Vector2) {
         // Get contact with lowest collision time.
         min_contact := Contact{ time = 1e19 }
 
-        for wall in walls {
-            contact := ray_vs_rect(point, dir, wall.rect) or_continue
-            if contact.time >= min_contact.time do continue
-            min_contact = contact
-        }
 
         for actor, i in actors do if i != active_actor {
             contact := ray_vs_rect(point, dir, get_actor_rect(actor)) or_continue
@@ -126,32 +124,17 @@ update_aim_ball :: proc(cursor: rl.Vector2) {
 ball_path_index: int
 ball_path_timer: f32
 update_launch_ball :: proc(dt: f32) {
-    if ball_path_index >= len(bullet_path) {
-        ball.pos = bullet_path[len(bullet_path) - 1]
+    physics.update(&world, dt)
+    if rlutil.nearly_eq_vector(world.ball.vel, 0) {
+        world.ball.vel = 0
         mode = .AimBall
-
-        ball_path_index = 0
-        ball_path_timer = 0
-        return
-    }
-
-    if ball_path_index == 0 do ball_path_index = 1
-
-    start := bullet_path[ball_path_index - 1]
-    end := bullet_path[ball_path_index]
-
-    ball_path_timer += dt
-    ball.pos = linalg.lerp(start, end, ball_path_timer)
-
-    if  ball_path_timer >= 1 {
-        ball_path_timer -= 1
-        ball_path_index += 1
     }
 }
 
 draw :: proc(cursor: rl.Vector2) {
-    for wall in walls {
-        rl.DrawRectangleRec(wall.rect, wall.color)
+    for wall in world.walls {
+        polygon := wall.shape.(physics.Polygon)
+        physics.polygon_draw_lines(polygon, rl.GREEN)
     }
 
     for actor in actors {
@@ -175,7 +158,7 @@ draw :: proc(cursor: rl.Vector2) {
     }
 
     // Draw the ball over the path so that it  looks like the path is coming out of ball.
-    rl.DrawCircleV(ball.pos, grid.CELL, rl.GREEN)
+    rl.DrawCircleV(world.ball.pos, grid.CELL, rl.GREEN)
 }
 
 Contact :: struct {

@@ -65,7 +65,7 @@ main :: proc() {
     polydraw.init(8)
     defer polydraw.deinit()
 
-    game.init(2)
+    game.init(3)
     defer game.deinit()
 
     rl.SetTargetFPS(60)

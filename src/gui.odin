@@ -6,6 +6,7 @@ import rl "vendor:raylib"
 
 import "game"
 import "game/grid"
+import "game/physics"
 import "ngui"
 import "rlutil"
 
@@ -76,20 +77,12 @@ gui_drag :: proc(cursor: rl.Vector2) {
 
     if rl.IsMouseButtonReleased(.LEFT) {
         gui.dragging = false
-        append(&game.walls, game.Wall{ drag_rect, gui.color })
+        append(&game.world.walls, physics.new_wall_body(drag_rect))
     }
 }
 
 gui_delete_wall :: proc(cursor: rl.Vector2) {
-    for wall, i in game.walls do if rl.CheckCollisionPointRec(cursor, wall.rect) {
-        rl.DrawRectangleRec(wall.rect, {0, 0, 0, 30})
-
-        if rl.IsMouseButtonPressed(.RIGHT) {
-            unordered_remove(&game.walls, i)
-        }
-
-        return // Can only hover one rect at a time.
-    }
+    // TODO: polygon point collision on cursor.
 }
 
 normalize_rect :: proc(start, end: rl.Vector2) -> rl.Rectangle {
