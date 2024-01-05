@@ -26,6 +26,7 @@ future: physics.World
 
 
 bullet_path : [dynamic]rl.Vector2
+player_path : [dynamic]rl.Vector2
 
 Wall :: struct{
     rect: rl.Rectangle,
@@ -45,10 +46,13 @@ init :: proc(size: int) {
     append(&world.dynamics, body_1)
     append(&future.dynamics, body_1)
 
+    reserve(&bullet_path, 100)
+    reserve(&player_path, 100)
 }
 
 deinit :: proc() {
     delete(bullet_path)
+    delete(player_path)
 
     physics.deinit(world)
     physics.deinit(future)
@@ -68,6 +72,9 @@ update :: proc(dt: f32, cursor: rl.Vector2) {
 
             ball := &world.dynamics[0]
             ball.vel = linalg.normalize(cursor - ball.pos) * BALL_LAUNCH_SPEED
+
+            player := &world.dynamics[1]
+            player.vel = -ball.vel
         }
     case .LaunchBall: update_launch_ball(dt)
     case .EditWalls: update_edit_walls(cursor)
@@ -92,10 +99,15 @@ update_aim_ball :: proc(cursor: rl.Vector2) {
         ball := &future.dynamics[0]
         ball.vel = linalg.normalize(cursor - ball.pos) * BALL_LAUNCH_SPEED
 
+        player := &future.dynamics[1]
+        player.vel = -ball.vel
+
         clear(&bullet_path)
+        clear(&player_path)
         for _ in 0..<100 {
             physics.update(&future, 0.1)
             append(&bullet_path, ball.pos)
+            append(&player_path, player.pos)
         }
     }
 }
@@ -171,6 +183,14 @@ draw :: proc(cursor: rl.Vector2) {
             vb := bullet_path[i + 1]
 
             pct := f32(i + 1) / f32(len(bullet_path))
+            color := ngui.lerp_color({30, 30, 30, 255}, rl.WHITE, pct)
+            rl.DrawLineV(va, vb, color)
+        }
+
+        for va, i in player_path[:len(player_path) - 1] {
+            vb := player_path[i + 1]
+
+            pct := f32(i + 1) / f32(len(player_path))
             color := ngui.lerp_color({30, 30, 30, 255}, rl.WHITE, pct)
             rl.DrawLineV(va, vb, color)
         }
