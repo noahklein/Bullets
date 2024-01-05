@@ -77,7 +77,9 @@ gui_drag :: proc(cursor: rl.Vector2) {
 
     if rl.IsMouseButtonReleased(.LEFT) {
         gui.dragging = false
-        append(&game.world.walls, physics.new_wall_body(drag_rect))
+        wall := physics.new_wall_body(drag_rect)
+        append(&game.world.walls,  wall)
+        append(&game.future.walls, wall)
     }
 }
 

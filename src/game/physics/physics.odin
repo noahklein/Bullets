@@ -1,13 +1,14 @@
 package physics
 
+import "core:math/linalg"
 import rl "vendor:raylib"
 
-GRAVITY :: rl.Vector2{0, 10}
+GRAVITY :: rl.Vector2{0, 9}
 DT :: 1.0 / 240.0
 
 World :: struct {
     ball: Body,
-    walls: [dynamic]Body,
+    walls: [dynamic]Body, // Walls are static.
     collisions: [dynamic]Hit,
 
     dt_acc: f32,
@@ -40,11 +41,21 @@ fixed_update :: proc(w: ^World) {
     clear(&w.collisions)
     for &wall in w.walls {
         hit := collision_check(&w.ball, &wall) or_continue
+
+        w.ball.pos -= hit.depth * hit.normal
         append(&w.collisions, hit)
     }
 
+
     for hit in w.collisions {
-        w.ball.pos -= hit.depth * hit.normal
+        rel_vel := -w.ball.vel
+        contact_vel_mag := linalg.dot(rel_vel, hit.normal)
+        if contact_vel_mag > 0 {
+            continue
+        }
+
+        w.ball.vel -= -2 * contact_vel_mag * hit.normal
+
     }
 }
 

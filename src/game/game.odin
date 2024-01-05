@@ -10,6 +10,7 @@ import "../ngui"
 import "../rlutil"
 
 ACTOR_SIZE :: rl.Vector2{2*grid.CELL, 4*grid.CELL}
+BALL_LAUNCH_SPEED :: 20
 
 mode: GameMode = .AimBall
 GameMode :: enum {
@@ -18,6 +19,7 @@ GameMode :: enum {
 }
 
 world : physics.World
+future: physics.World
 
 active_actor: int
 actors: [dynamic]Actor
@@ -51,12 +53,16 @@ init :: proc(size: int) {
 
     world = physics.init()
     world.ball = physics.Body{shape = physics.Circle{grid.CELL}}
+
+    future.ball = world.ball
 }
 
 deinit :: proc() {
     delete(actors)
-    physics.deinit(world)
     delete(bullet_path)
+
+    physics.deinit(world)
+    physics.deinit(future)
 }
 
 update :: proc(dt: f32, cursor: rl.Vector2) {
@@ -66,7 +72,7 @@ update :: proc(dt: f32, cursor: rl.Vector2) {
             // Fire!
             if rl.IsMouseButtonPressed(.MIDDLE) {
                 mode = .LaunchBall
-                world.ball.vel = linalg.normalize(cursor - world.ball.pos)
+                world.ball.vel = linalg.normalize(cursor - world.ball.pos) * BALL_LAUNCH_SPEED
             }
         case .LaunchBall: update_launch_ball(dt)
     }
@@ -81,6 +87,18 @@ update_aim_ball :: proc(cursor: rl.Vector2) {
 
     // Update ball position to aim towards cursor.
     world.ball.pos = actor.pos + linalg.normalize(dir) * grid.CELL
+
+    if rl.GetMouseDelta() != 0 {
+        future.ball.pos = world.ball.pos
+        future.ball.vel = linalg.normalize(dir) * BALL_LAUNCH_SPEED
+
+        clear(&bullet_path)
+        for i in 0..<100 {
+            physics.update(&future, 0.1)
+            append(&bullet_path, future.ball.pos)
+        }
+    }
+    if true do return
 
     clear(&bullet_path)
     append(&bullet_path, point)
@@ -137,6 +155,11 @@ draw :: proc(cursor: rl.Vector2) {
         physics.polygon_draw_lines(polygon, rl.GREEN)
     }
 
+    for wall in future.walls {
+        polygon := wall.shape.(physics.Polygon)
+        physics.polygon_draw_lines(polygon, rl.GREEN - {0, 0, 0, 100})
+    }
+
     for actor in actors {
         color := rl.BLUE if actor.team == .Blue else rl.RED
         rl.DrawRectangleV(actor.pos, ACTOR_SIZE, color)
@@ -159,6 +182,7 @@ draw :: proc(cursor: rl.Vector2) {
 
     // Draw the ball over the path so that it  looks like the path is coming out of ball.
     rl.DrawCircleV(world.ball.pos, grid.CELL, rl.GREEN)
+    rl.DrawCircleV(future.ball.pos, grid.CELL, rl.GREEN - {0, 0, 0, 100})
 }
 
 Contact :: struct {
