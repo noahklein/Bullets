@@ -11,29 +11,21 @@ import "../ngui"
 ACTOR_SIZE :: rl.Vector2{2*grid.CELL, 4*grid.CELL}
 BALL_LAUNCH_SPEED :: 100
 
+EDIT_WALL_POINT_RADIUS :: 2
+
 mode: GameMode = .AimBall
+// mode: GameMode = .EditWalls
 GameMode :: enum {
     AimBall,
     LaunchBall,
+    EditWalls,
 }
 
 world : physics.World
 future: physics.World
 
-active_actor: int
-actors: [dynamic]Actor
-
 
 bullet_path : [dynamic]rl.Vector2
-
-Actor :: struct{
-    pos: rl.Vector2,
-    team: Team,
-}
-
-get_actor_rect :: #force_inline proc(a: Actor) -> rl.Rectangle {
-    return {a.pos.x, a.pos.y, ACTOR_SIZE.x, ACTOR_SIZE.y}
-}
 
 Wall :: struct{
     rect: rl.Rectangle,
@@ -43,13 +35,6 @@ Wall :: struct{
 Team :: enum u8 { None, Blue, Red }
 
 init :: proc(size: int) {
-    reserve(&actors, size)
-    append(&actors,
-        Actor{{0, 0}, .Blue},
-        Actor{{8*grid.CELL, 0}, .Red},
-        Actor{{16*grid.CELL, 0}, .Blue},
-    )
-
     world = physics.init()
     ball := physics.Body{shape = physics.Circle{grid.CELL}}
     append(&world.dynamics,  ball)
@@ -63,7 +48,6 @@ init :: proc(size: int) {
 }
 
 deinit :: proc() {
-    delete(actors)
     delete(bullet_path)
 
     physics.deinit(world)
@@ -71,104 +55,117 @@ deinit :: proc() {
 }
 
 update :: proc(dt: f32, cursor: rl.Vector2) {
-    switch mode {
-        case .AimBall:
-            update_aim_ball(cursor)
-            // Fire!
-            if rl.IsMouseButtonPressed(.MIDDLE) {
-                mode = .LaunchBall
+    if rl.IsKeyPressed(.F3) {
+        mode = .AimBall if mode == .EditWalls else .EditWalls
+    }
 
-                ball := &world.dynamics[0]
-                ball.vel = linalg.normalize(cursor - ball.pos) * BALL_LAUNCH_SPEED
-            }
-        case .LaunchBall: update_launch_ball(dt)
+    switch mode {
+    case .AimBall:
+        update_aim_ball(cursor)
+        // Fire!
+        if rl.IsMouseButtonPressed(.MIDDLE) {
+            mode = .LaunchBall
+
+            ball := &world.dynamics[0]
+            ball.vel = linalg.normalize(cursor - ball.pos) * BALL_LAUNCH_SPEED
+        }
+    case .LaunchBall: update_launch_ball(dt)
+    case .EditWalls: update_edit_walls(cursor)
     }
 }
 
 update_aim_ball :: proc(cursor: rl.Vector2) {
-    actor := actors[active_actor]
-    my_team := actor.team
-
-    point := actor.pos
-    dir := cursor - actor.pos
+    pad_rect :: proc(rect: rl.Rectangle, pad: rl.Vector2) -> rl.Rectangle {
+        return {
+            rect.x - pad.x/2,    rect.y - pad.y/2,
+            rect.width  + pad.x, rect.height + pad.y,
+        }
+    }
 
     // Update ball position to aim towards cursor.
-    world.dynamics[0].pos = actor.pos + linalg.normalize(dir) * grid.CELL
+    player_padded_rect := pad_rect(world.dynamics[1].aabb, 2.25*grid.CELL)
+    world.dynamics[0].pos = nearest_point_on_rect(cursor, player_padded_rect)
 
     if rl.GetMouseDelta() != 0 {
-        for body, i in world.dynamics {
-            future.dynamics[i] = body
-        }
+        for body, i in world.dynamics do future.dynamics[i] = body
 
         ball := &future.dynamics[0]
-        ball.vel = linalg.normalize(dir) * BALL_LAUNCH_SPEED
+        ball.vel = linalg.normalize(cursor - ball.pos) * BALL_LAUNCH_SPEED
 
         clear(&bullet_path)
-        for i in 0..<100 {
+        for _ in 0..<100 {
             physics.update(&future, 0.1)
             append(&bullet_path, ball.pos)
         }
     }
-    if true do return
-
-    clear(&bullet_path)
-    append(&bullet_path, point)
-
-    for _ in 0..<50 {
-        is_my_teammate : bool // For passing
-
-        // Get contact with lowest collision time.
-        min_contact := Contact{ time = 1e19 }
-
-
-        for actor, i in actors do if i != active_actor {
-            contact := ray_vs_rect(point, dir, get_actor_rect(actor)) or_continue
-            if contact.time >= min_contact.time do continue
-
-            min_contact = contact
-            is_my_teammate = actor.team == my_team
-        }
-
-        // No collision found, just continue the line in that direction.
-        if min_contact.time > 1e18 {
-            append(&bullet_path, point + dir * 100)
-            break
-        }
-
-        point = min_contact.point
-        if min_contact.normal.x != 0 {
-            dir.x *= -1
-        }
-        if min_contact.normal.y != 0 {
-            dir.y *= -1
-        }
-        append(&bullet_path, point)
-
-        if is_my_teammate {
-            break // Pass the ball to teammate.
-        }
-    }
 }
 
-ball_path_index: int
-ball_path_timer: f32
+launch_ball_dt_acc: f32
 update_launch_ball :: proc(dt: f32) {
+    launch_ball_dt_acc += dt
+    if launch_ball_dt_acc > 10 {
+        launch_ball_dt_acc = 0
+        mode = .AimBall
+        return
+    }
     physics.update(&world, dt)
+}
+
+update_edit_walls :: proc(cursor: rl.Vector2) {
+    @(static) dragging_wall := -1
+    @(static) dragging_vert := -1
+
+    if rl.IsMouseButtonUp(.LEFT) {
+        dragging_wall = -1
+        dragging_vert = -1
+        return
+    }
+
+
+    if rl.IsMouseButtonPressed(.LEFT) {
+        dragging_wall, dragging_vert = edit_walls_hovered(cursor)
+    }
+    if dragging_wall == -1 || dragging_vert == -1 {
+        return
+    }
+
+    wall := &world.walls[dragging_wall]
+    polygon := &wall.shape.(physics.Polygon)
+    polygon.vertices[dragging_vert] = cursor // Move cursor.
+    wall.aabb = physics.body_get_aabb(wall^) // Polygon changed, re-calculate aabb.
+
+    future.walls[dragging_wall] = wall^
+}
+
+edit_walls_hovered :: proc(cursor: rl.Vector2) -> (wall_i, vert_i: int){
+    for &wall, wall_i in world.walls {
+        poly := &wall.shape.(physics.Polygon)
+        for vi in 0..<poly.count do if rl.CheckCollisionPointCircle(cursor, poly.vertices[vi], EDIT_WALL_POINT_RADIUS) {
+            return wall_i, vi
+        }
+    }
+    return -1, -1
 }
 
 draw :: proc(cursor: rl.Vector2) {
     for wall in world.walls {
         polygon := wall.shape.(physics.Polygon)
-        physics.polygon_draw_lines(polygon, rl.GREEN)
-    }
+        physics.polygon_draw(polygon, rl.SKYBLUE)
+        physics.polygon_draw_lines(polygon, rl.WHITE)
 
-    for wall in future.walls {
-        polygon := wall.shape.(physics.Polygon)
-        physics.polygon_draw_lines(polygon, rl.GREEN - {0, 0, 0, 100})
+        if mode == .EditWalls do for i in 0..<polygon.count {
+            v := polygon.vertices[i]
+
+            color := rl.WHITE - {0, 0, 0, 100}
+            if rl.CheckCollisionPointCircle(cursor, v, EDIT_WALL_POINT_RADIUS) {
+                color.a += 100
+            }
+            rl.DrawCircleV(v, EDIT_WALL_POINT_RADIUS, color)
+        }
     }
 
     if len(bullet_path) <= 1 {
-        rl.DrawLineV(actors[active_actor].pos, cursor, rl.WHITE)
+        rl.DrawLineV(world.dynamics[0].pos, cursor, rl.WHITE)
     } else {
         for va, i in bullet_path[:len(bullet_path) - 1] {
             vb := bullet_path[i + 1]
@@ -195,42 +192,9 @@ draw_world :: proc(w: physics.World, $subtract_alpha: u8) {
     }
 }
 
-Contact :: struct {
-    time: f32,
-    normal: rl.Vector2,
-    point: rl.Vector2,
-}
-
-ray_vs_rect :: proc(origin, dir: rl.Vector2, rect: rl.Rectangle) -> (Contact, bool) {
-    rpos, rsize: rl.Vector2 = {rect.x, rect.y}, {rect.width, rect.height}
-
-    near := (rpos - origin) / dir
-    far  := (rpos + rsize - origin) / dir
-
-    if linalg.is_nan(near.x) || linalg.is_nan(near.y) do return {}, false
-    if linalg.is_nan(far.x)  || linalg.is_nan(far.y)  do return {}, false
-
-    if near.x > far.x do near.x, far.x = far.x, near.x
-    if near.y > far.y do near.y, far.y = far.y, near.y
-
-    if near.x > far.y || near.y > far.x do return {}, false
-
-    t_near := max(near.x, near.y)
-    t_far  := min(far.x, far.y)
-    if t_far <= -linalg.F32_EPSILON || t_near <= -linalg.F32_EPSILON {
-        return {}, false // Ray pointing away from rect.
-    }
-
-    contact_normal : rl.Vector2
-     if near.x > near.y {
-        contact_normal = {1, 0} if dir.x < 0 else {-1, 0}
-    } else if near.x < near.y {
-        contact_normal = {0, 1} if dir.y < 0 else {0, -1}
-    } // else contact_normal is {0, 0}
-
-    return {
-        time = t_near,
-        normal = contact_normal,
-        point = origin + t_near * dir,
-    }, true
+@(require_results)
+nearest_point_on_rect :: proc(point: rl.Vector2, rect: rl.Rectangle) -> (cp: rl.Vector2) {
+    cp.x = clamp(point.x, rect.x, rect.x+rect.width)
+    cp.y = clamp(point.y, rect.y, rect.y+rect.height)
+    return
 }

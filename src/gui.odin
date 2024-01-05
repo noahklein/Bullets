@@ -21,6 +21,11 @@ draw_gui :: proc(camera: ^rl.Camera2D, cursor: rl.Vector2) {
             ngui.float(&camera.rotation, min = -360, max = 360, label = "Angle")
         }
 
+        if ngui.flex_row({0.2, 0.25}) {
+            ngui.text("Ball")
+            ngui.arrow(&game.world.dynamics[0].vel, "Velocity")
+        }
+
         dur :: proc(prof: rlutil.Profile) -> f32 {
             return f32(time.stopwatch_duration(prof.stopwatch))
         }
@@ -46,6 +51,8 @@ Gui :: struct {
 gui : Gui
 
 gui_drag :: proc(cursor: rl.Vector2) {
+    if game.mode == .EditWalls do return
+
     if !ngui.want_mouse() && rl.IsMouseButtonPressed(.LEFT) {
         gui.dragging = true
         gui.drag_mouse_start = cursor
