@@ -7,10 +7,9 @@ import rl "vendor:raylib"
 import "grid"
 import "physics"
 import "../ngui"
-import "../rlutil"
 
 ACTOR_SIZE :: rl.Vector2{2*grid.CELL, 4*grid.CELL}
-BALL_LAUNCH_SPEED :: 20
+BALL_LAUNCH_SPEED :: 100
 
 mode: GameMode = .AimBall
 GameMode :: enum {
@@ -52,9 +51,15 @@ init :: proc(size: int) {
     )
 
     world = physics.init()
-    world.ball = physics.Body{shape = physics.Circle{grid.CELL}}
+    ball := physics.Body{shape = physics.Circle{grid.CELL}}
+    append(&world.dynamics,  ball)
+    append(&future.dynamics, ball)
 
-    future.ball = world.ball
+
+    body_1 := physics.new_wall_body({0, 0, ACTOR_SIZE.x, ACTOR_SIZE.y})
+    append(&world.dynamics, body_1)
+    append(&future.dynamics, body_1)
+
 }
 
 deinit :: proc() {
@@ -72,7 +77,9 @@ update :: proc(dt: f32, cursor: rl.Vector2) {
             // Fire!
             if rl.IsMouseButtonPressed(.MIDDLE) {
                 mode = .LaunchBall
-                world.ball.vel = linalg.normalize(cursor - world.ball.pos) * BALL_LAUNCH_SPEED
+
+                ball := &world.dynamics[0]
+                ball.vel = linalg.normalize(cursor - ball.pos) * BALL_LAUNCH_SPEED
             }
         case .LaunchBall: update_launch_ball(dt)
     }
@@ -86,16 +93,20 @@ update_aim_ball :: proc(cursor: rl.Vector2) {
     dir := cursor - actor.pos
 
     // Update ball position to aim towards cursor.
-    world.ball.pos = actor.pos + linalg.normalize(dir) * grid.CELL
+    world.dynamics[0].pos = actor.pos + linalg.normalize(dir) * grid.CELL
 
     if rl.GetMouseDelta() != 0 {
-        future.ball.pos = world.ball.pos
-        future.ball.vel = linalg.normalize(dir) * BALL_LAUNCH_SPEED
+        for body, i in world.dynamics {
+            future.dynamics[i] = body
+        }
+
+        ball := &future.dynamics[0]
+        ball.vel = linalg.normalize(dir) * BALL_LAUNCH_SPEED
 
         clear(&bullet_path)
         for i in 0..<100 {
             physics.update(&future, 0.1)
-            append(&bullet_path, future.ball.pos)
+            append(&bullet_path, ball.pos)
         }
     }
     if true do return
@@ -143,10 +154,6 @@ ball_path_index: int
 ball_path_timer: f32
 update_launch_ball :: proc(dt: f32) {
     physics.update(&world, dt)
-    if rlutil.nearly_eq_vector(world.ball.vel, 0) {
-        world.ball.vel = 0
-        mode = .AimBall
-    }
 }
 
 draw :: proc(cursor: rl.Vector2) {
@@ -160,16 +167,8 @@ draw :: proc(cursor: rl.Vector2) {
         physics.polygon_draw_lines(polygon, rl.GREEN - {0, 0, 0, 100})
     }
 
-    for actor in actors {
-        color := rl.BLUE if actor.team == .Blue else rl.RED
-        rl.DrawRectangleV(actor.pos, ACTOR_SIZE, color)
-    }
-
-
-    actor := actors[active_actor]
-
     if len(bullet_path) <= 1 {
-        rl.DrawLineV(actor.pos, cursor, rl.WHITE)
+        rl.DrawLineV(actors[active_actor].pos, cursor, rl.WHITE)
     } else {
         for va, i in bullet_path[:len(bullet_path) - 1] {
             vb := bullet_path[i + 1]
@@ -180,9 +179,20 @@ draw :: proc(cursor: rl.Vector2) {
         }
     }
 
-    // Draw the ball over the path so that it  looks like the path is coming out of ball.
-    rl.DrawCircleV(world.ball.pos, grid.CELL, rl.GREEN)
-    rl.DrawCircleV(future.ball.pos, grid.CELL, rl.GREEN - {0, 0, 0, 100})
+    draw_world(world, 0)
+    draw_world(future, 100)
+}
+
+draw_world :: proc(w: physics.World, $subtract_alpha: u8) {
+    color_mod :: rl.Color{0, 0, 0, subtract_alpha}
+
+    for body in w.dynamics do switch s in body.shape {
+        case physics.Polygon:
+            physics.polygon_draw(s, rl.YELLOW - color_mod)
+            physics.polygon_draw_lines(s, rl.WHITE - color_mod)
+        case physics.Circle:
+            rl.DrawCircleV(body.pos, s.radius, rl.GREEN - color_mod)
+    }
 }
 
 Contact :: struct {

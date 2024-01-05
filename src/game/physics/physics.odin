@@ -7,10 +7,7 @@ GRAVITY :: rl.Vector2{0, 9}
 DT :: 1.0 / 240.0
 
 World :: struct {
-    ball: Body,
-    walls: [dynamic]Body, // Walls are static.
-    collisions: [dynamic]Hit,
-
+    dynamics, walls: [dynamic]Body,
     dt_acc: f32,
 }
 
@@ -20,8 +17,8 @@ init :: proc() -> World {
 }
 
 deinit :: proc(w: World) {
-    delete(w.collisions)
     delete(w.walls)
+    delete(w.dynamics)
 }
 
 update :: proc(world: ^World, dt: f32) {
@@ -34,40 +31,48 @@ update :: proc(world: ^World, dt: f32) {
 
 @(private)
 fixed_update :: proc(w: ^World) {
-    w.ball.vel += GRAVITY * DT
-    w.ball.pos += w.ball.vel * DT
-    w.ball.aabb = get_aabb(w.ball)
-
-    clear(&w.collisions)
-    for &wall in w.walls {
-        hit := collision_check(&w.ball, &wall) or_continue
-
-        w.ball.pos -= hit.depth * hit.normal
-        append(&w.collisions, hit)
+    for &body in w.dynamics {
+        body.vel += GRAVITY * DT
+        body_move(&body, body.vel * DT)
     }
 
-
-    for hit in w.collisions {
-        rel_vel := -w.ball.vel
-        contact_vel_mag := linalg.dot(rel_vel, hit.normal)
-        if contact_vel_mag > 0 {
-            continue
+    for &body in w.dynamics {
+        for wall in w.walls {
+            hit := collision_check(body, wall) or_continue
+            body_move(&body, -hit.depth * hit.normal)
+            body.vel -= -2 * linalg.dot(-body.vel, hit.normal) * hit.normal // Bounce
         }
+    }
 
-        w.ball.vel -= -2 * contact_vel_mag * hit.normal
+    for &body, i in w.dynamics[:len(w.dynamics) - 1] {
+        for &other in w.dynamics[i+1:] {
+            hit := collision_check(body, other) or_continue
 
+            delta_p := hit.depth * hit.normal
+            body_move(&body, -delta_p / 2)
+            body_move(&other, delta_p / 2)
+
+
+            rel_vel := other.vel - body.vel
+
+            delta_v := -2 * linalg.dot(rel_vel, hit.normal) * hit.normal
+            body.vel  -= delta_v / 2
+            other.vel += delta_v / 2
+        }
     }
 }
 
 new_wall_body :: proc(r: rl.Rectangle) -> Body {
+    poly := polygon_init(
+        {r.x, r.y},
+        {r.x + r.width, r.y},
+        {r.x + r.width, r.y + r.height},
+        {r.x, r.y + r.height},
+    )
+
     return Body{
-        pos = {r.x, r.y},
+        pos = {r.x + r.width/2, r.y + r.height/2},
         aabb = r,
-        shape = polygon_init(
-            {r.x, r.y},
-            {r.x + r.width, r.y},
-            {r.x + r.width, r.y + r.height},
-            {r.x, r.y + r.height},
-        ),
+        shape = poly,
     }
 }

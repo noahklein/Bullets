@@ -17,7 +17,7 @@ Hit :: struct {
     depth: f32,
 }
 
-collision_check :: proc(a, b: ^Body) -> (Hit, bool) {
+collision_check :: proc(a, b: Body) -> (Hit, bool) {
     // Broad-phase check to early exit.
     if !rl.CheckCollisionRecs(a.aabb, b.aabb) {
         return {}, false
@@ -25,7 +25,7 @@ collision_check :: proc(a, b: ^Body) -> (Hit, bool) {
 
     switch &as in a.shape {
     case Circle:
-        switch &bs in b.shape {
+        switch bs in b.shape {
         case Circle: return collide_circles(a.pos, b.pos, as.radius, bs.radius)
         case Polygon:
             hit, ok := collide_polygon_circle(bs, b.pos, a.pos, as.radius)
@@ -33,7 +33,7 @@ collision_check :: proc(a, b: ^Body) -> (Hit, bool) {
             return hit, ok
         }
     case Polygon:
-        switch &bs in b.shape {
+        switch bs in b.shape {
         case Circle:
             hit, ok := collide_polygon_circle(as, a.pos, b.pos, bs.radius)
             // hit.normal = -hit.normal
@@ -174,25 +174,6 @@ project_circle :: proc(center: rl.Vector2, radius: f32, axis: rl.Vector2) -> (lo
     high = linalg.dot(center + dir, axis)
 
     return min(low, high), max(low, high)
-}
-
-// Axis-aligned bounding box, for fast broad-phase filtering.
-get_aabb :: proc(b: Body) -> rl.Rectangle {
-    rmin: rl.Vector2 = 1e9
-    rmax: rl.Vector2 = -1e9
-    switch &s in b.shape {
-        case Circle:
-            rmin = b.pos - s.radius
-            rmax = b.pos + s.radius
-        case Polygon:
-            for i in 0..<s.count {
-                v := s.vertices[i]
-                rmin = linalg.min(rmin, v)
-                rmax = linalg.max(rmax, v)
-            }
-    }
-
-    return {rmin.x, rmin.y, rmax.x - rmin.x, rmax.y - rmin.y}
 }
 
 // A polygon's center is the arithmetic mean of the vertices.

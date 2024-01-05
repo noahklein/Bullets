@@ -44,6 +44,7 @@ main :: proc() {
     defer free_all(context.temp_allocator)
 
     rl.SetTraceLogLevel(.ALL if ODIN_DEBUG else .WARNING)
+    rl.SetConfigFlags({.VSYNC_HINT})
     rl.InitWindow(1600, 900, "Bullets")
     defer rl.CloseWindow()
 
@@ -68,7 +69,6 @@ main :: proc() {
     game.init(3)
     defer game.deinit()
 
-    rl.SetTargetFPS(60)
     for !rl.WindowShouldClose() {
         defer free_all(context.temp_allocator)
 
