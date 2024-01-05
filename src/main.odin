@@ -74,6 +74,8 @@ main :: proc() {
 
         dt := rl.GetFrameTime()
 
+        // Camera smooth follow player.
+        camera.target = linalg.lerp(camera.target, game.world.dynamics[1].pos, dt)
         cursor := rl.GetScreenToWorld2D(rl.GetMousePosition(), camera)
 
         // Camera zoom
