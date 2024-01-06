@@ -11,6 +11,7 @@ polygon: [dynamic]rl.Vector2
 hovered: rl.Vector2
 
 dragging: bool
+dragging_point := -1
 
 init   :: proc(size: int) { reserve(&polygon, size) }
 deinit :: proc() { delete(polygon) }
@@ -35,13 +36,21 @@ update :: proc(camera: ^rl.Camera2D) {
     }
 
     if !ngui.want_mouse() && rl.IsMouseButtonPressed(.LEFT) {
-        already_exists: bool
-        for point in polygon do if rlutil.nearly_eq(point, hovered) {
-            already_exists = true
+        for point, i in polygon do if rl.CheckCollisionPointCircle(hovered, point, point_radius(camera^)) {
+            dragging_point = i
             break
         }
-        if !already_exists do append(&polygon, hovered)
+
+        if dragging_point == -1 {
+            append(&polygon, hovered)
+            return
+        }
     }
+
+    if rl.IsMouseButtonUp(.LEFT) do dragging_point = -1
+
+    if dragging_point != -1 do polygon[dragging_point] = cursor
+
 }
 
 draw :: proc(camera: ^rl.Camera2D) {
@@ -55,7 +64,8 @@ draw :: proc(camera: ^rl.Camera2D) {
         grid.draw(camera^)
         rl.DrawCircleV(hovered, POINT_RADIUS, rl.LIGHTGRAY)
 
-        rlutil.DrawPolygonLines(polygon[:], rl.YELLOW)
+        // rlutil.DrawPolygonLines(polygon[:], rl.YELLOW)
+        rlutil.draw_polygon(polygon[:], rl.YELLOW)
         for point, i in polygon {
             color: rl.Color
             switch i {
@@ -117,4 +127,8 @@ gui_draw :: proc(camera: ^rl.Camera2D) {
 
         }
     }
+}
+
+point_radius :: proc(camera: rl.Camera2D) -> f32 {
+    return 4 / camera.zoom
 }
