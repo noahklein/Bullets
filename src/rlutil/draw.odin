@@ -23,7 +23,7 @@ draw_polygon :: proc(vs: []rl.Vector2, color: rl.Color) {
         rl.DrawTriangleLines(vs[i], vs[i+1], vs[(i+2) % len(vs)], rl.WHITE)
     }
 
-    for i := 0; i + 3 <= len(vs); i += 4 {
+    for i := 0; i + 4 <= len(vs); i += 4 {
         rl.DrawTriangle     (vs[i], vs[i+2], vs[(i+4) % len(vs)], rl.BLUE)
         rl.DrawTriangleLines(vs[i], vs[i+2], vs[(i+4) % len(vs)], rl.WHITE)
     }

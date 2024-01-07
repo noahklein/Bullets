@@ -1,6 +1,7 @@
 package polydraw
 
 import "core:fmt"
+import "core:math/linalg"
 import rl "vendor:raylib"
 
 import "../game/grid"
@@ -54,7 +55,7 @@ update :: proc(camera: ^rl.Camera2D) {
 }
 
 draw :: proc(camera: ^rl.Camera2D) {
-    POINT_RADIUS := 3 / camera.zoom
+    POINT_RADIUS := point_radius(camera^)
 
     rl.BeginDrawing()
     defer rl.EndDrawing()
@@ -86,7 +87,7 @@ draw :: proc(camera: ^rl.Camera2D) {
 gui_draw :: proc(camera: ^rl.Camera2D) {
     ngui.update()
 
-    if ngui.begin_panel("Draw Polygon", {0, 0, 300, 0}) {
+    if ngui.begin_panel("Draw Polygon", {0, 0, 350, 0}) {
         if ngui.flex_row({0.2, 0.4, 0.2, 0.2}) {
             ngui.text("Camera")
             ngui.vec2(&camera.target, label = "Target")
@@ -124,9 +125,31 @@ gui_draw :: proc(camera: ^rl.Camera2D) {
                 }
                 fmt.println("}")
             }
+        }
 
+        if ngui.flex_row({0.2, 0.2, 0.2}) {
+            if ngui.button("Less") {
+                points := max(len(polygon) - 1, 0)
+                gen_regular_polygon(points)
+            }
+            if ngui.button("More") {
+                gen_regular_polygon(len(polygon) + 1)
+            }
         }
     }
+}
+
+gen_regular_polygon :: proc(points: int) {
+    clear(&polygon)
+
+    angle_delta := 360.0 / f32(points)
+    for i in 0..<points {
+        angle := -angle_delta * f32(i) * rl.DEG2RAD
+        v := rl.Vector2{linalg.cos(angle), linalg.sin(angle)}
+
+        append(&polygon, v * 4 * grid.CELL)
+    }
+
 }
 
 point_radius :: proc(camera: rl.Camera2D) -> f32 {
