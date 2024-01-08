@@ -128,11 +128,11 @@ gui_draw :: proc(camera: ^rl.Camera2D) {
         }
 
         if ngui.flex_row({0.2, 0.2, 0.2}) {
-            if ngui.button("Less") {
+            if ngui.button("Less") || rl.IsKeyDown(.A) {
                 points := max(len(polygon) - 1, 0)
                 gen_regular_polygon(points)
             }
-            if ngui.button("More") {
+            if ngui.button("More") || rl.IsKeyDown(.D) {
                 gen_regular_polygon(len(polygon) + 1)
             }
         }
