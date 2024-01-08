@@ -137,6 +137,8 @@ gui_draw :: proc(camera: ^rl.Camera2D) {
             }
         }
     }
+
+    rl.DrawFPS(rl.GetScreenWidth() - 80, 0)
 }
 
 gen_regular_polygon :: proc(points: int) {
