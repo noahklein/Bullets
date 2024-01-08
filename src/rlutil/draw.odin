@@ -31,15 +31,12 @@ draw_polygon :: proc(vs: []rl.Vector2, color: rl.Color) {
         }
     }
 
-    triangle_count : int
     for x := 2; x <= len(vs); x *= 2 {
         color := get_color(x)
         for i := 0; i + x/2 < len(vs) ; i += x {
             final := i+x if i+x < len(vs) else 0
             rl.DrawTriangle     (vs[i], vs[i+x/2], vs[final], color)
             rl.DrawTriangleLines(vs[i], vs[i+x/2], vs[final], rl.WHITE)
-
-            triangle_count += 1
         }
     }
 }
