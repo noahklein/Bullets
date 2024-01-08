@@ -20,23 +20,23 @@ draw_polygon :: proc(vs: []rl.Vector2, color: rl.Color) {
 
     get_color :: proc(x: int) -> rl.Color {
         switch x {
-            case   2: return rl.RED
-            case   4: return rl.ORANGE
-            case   8: return rl.YELLOW
-            case  16: return rl.GREEN
-            case  32: return rl.BLUE
-            case  64: return {75, 0, 130, 255} // Indigo
-            case 128: return rl.VIOLET
-            case    : return rl.LIGHTGRAY
+            case  1: return rl.RED
+            case  2: return rl.ORANGE
+            case  4: return rl.YELLOW
+            case  8: return rl.GREEN
+            case 16: return rl.BLUE
+            case 32: return {75, 0, 130, 255} // Indigo
+            case 64: return rl.VIOLET
+            case   : return rl.LIGHTGRAY
         }
     }
 
-    for x := 2; x <= len(vs); x *= 2 {
+    for x := 1; x <= len(vs); x *= 2 {
         color := get_color(x)
-        for i := 0; i + x/2 < len(vs) ; i += x {
-            final := i+x if i+x < len(vs) else 0
-            rl.DrawTriangle     (vs[i], vs[i+x/2], vs[final], color)
-            rl.DrawTriangleLines(vs[i], vs[i+x/2], vs[final], rl.WHITE)
+        for i := 0; i + x < len(vs); i += 2*x {
+            final := i + 2*x if i + 2*x < len(vs) else 0
+            rl.DrawTriangle     (vs[i], vs[i+x], vs[final], color)
+            rl.DrawTriangleLines(vs[i], vs[i+x], vs[final], rl.WHITE)
         }
     }
 }
