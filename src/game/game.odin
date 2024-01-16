@@ -24,7 +24,6 @@ GameMode :: enum {
 world : physics.World
 future: physics.World
 
-
 bullet_path : [dynamic]rl.Vector2
 player_path : [dynamic]rl.Vector2
 
@@ -32,8 +31,6 @@ Wall :: struct{
     rect: rl.Rectangle,
     color: rl.Color,
 }
-
-Team :: enum u8 { None, Blue, Red }
 
 init :: proc(size: int) {
     world = physics.init()

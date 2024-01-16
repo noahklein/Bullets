@@ -36,7 +36,6 @@ draw_gui :: proc(camera: ^rl.Camera2D, cursor: rl.Vector2) {
                 draw   := rlutil.profile_get("draw")
                 ngui.graph_line("Update", dur(update), rl.BLUE)
                 ngui.graph_line("Draw", dur(draw), rl.RED)
-
             }
         }
     }
